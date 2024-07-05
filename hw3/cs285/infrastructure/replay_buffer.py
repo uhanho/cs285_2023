@@ -26,7 +26,7 @@ class ReplayBuffer:
 
     def insert(
         self,
-        /,
+        # /,
         observation: np.ndarray,
         action: np.ndarray,
         reward: np.ndarray,
@@ -166,7 +166,7 @@ class MemoryEfficientReplayBuffer:
 
     def on_reset(
         self,
-        /,
+        # /,
         observation: np.ndarray,
     ):
         """
@@ -208,7 +208,7 @@ class MemoryEfficientReplayBuffer:
 
     def insert(
         self,
-        /,
+        # /,
         action: np.ndarray,
         reward: np.ndarray,
         next_observation: np.ndarray,
