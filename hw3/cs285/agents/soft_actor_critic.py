@@ -149,11 +149,11 @@ class SoftActorCritic(nn.Module):
 
         # TODO(student): Implement the different backup strategies.
         if self.target_critic_backup_type == "doubleq":
-            raise NotImplementedError
+            next_qs = next_qs.flip(0)
         elif self.target_critic_backup_type == "min":
-            raise NotImplementedError
+            next_qs = torch.min(next_qs, dim=0)[0]
         elif self.target_critic_backup_type == "mean":
-            raise NotImplementedError
+            next_qs = torch.mean(next_qs, dim=0)
         else:
             # Default, we don't need to do anything.
             pass
@@ -182,11 +182,6 @@ class SoftActorCritic(nn.Module):
         Update the critic networks by computing target values and minimizing Bellman error.
         """
         (batch_size,) = reward.shape
-        obs = ptu.from_numpy(obs)
-        action = ptu.from_numpy(action)
-        next_obs = ptu.from_numpy(next_obs)
-        reward = ptu.from_numpy(reward)
-        done = ptu.from_numpy(done)
 
         # Compute target values
         # Important: we don't need gradients for target values!
@@ -204,7 +199,7 @@ class SoftActorCritic(nn.Module):
 
             # Handle Q-values from multiple different target critic networks (if necessary)
             # (For double-Q, clip-Q, etc.)
-            # next_qs = self.q_backup_strategy(next_qs)
+            next_qs = self.q_backup_strategy(next_qs)
 
             assert next_qs.shape == (
                 self.num_critic_networks,
@@ -214,13 +209,15 @@ class SoftActorCritic(nn.Module):
             if self.use_entropy_bonus and self.backup_entropy:
                 # TODO(student): Add entropy bonus to the target values for SAC
                 next_action_entropy = self.entropy(next_action_distribution)
-                next_action_entropy = next_action_entropy[None].expand(
-                    (self.num_critic_networks, batch_size)
-                ).contiguous()
-                next_qs += -next_action_entropy * self.temperature
+                # print(next_action_entropy.shape)
+                # print(next_qs.shape)
+                # print(self.num_critic_networks)
+                # print(batch_size)
+                next_action_entropy = next_action_entropy.reshape(self.num_critic_networks, batch_size).contiguous()
+                next_qs += self.temperature * next_action_entropy
 
             # Compute the target Q-value
-            target_values: torch.Tensor = reward[None] + self.discount * (1 - 1.0 * (done[None])) * next_qs
+            target_values: torch.Tensor = reward + self.discount * (1 - 1.0 * (done.int())) * next_qs
             assert target_values.shape == (
                 self.num_critic_networks,
                 batch_size
@@ -252,7 +249,7 @@ class SoftActorCritic(nn.Module):
         # TODO(student): Compute the entropy of the action distribution.
         # Note: Think about whether to use .rsample() or .sample() here...
         samples = action_distribution.rsample()
-        entropy = -action_distribution.log_prob(samples)
+        entropy = -action_distribution.log_prob(samples).mean()
         return entropy
 
     def actor_loss_reinforce(self, obs: torch.Tensor):
@@ -297,13 +294,13 @@ class SoftActorCritic(nn.Module):
 
         # TODO(student): Sample actions
         # Note: Think about whether to use .rsample() or .sample() here...
-        action = ...
+        action = action_distribution.rsample((self.num_actor_samples,))
 
         # TODO(student): Compute Q-values for the sampled state-action pair
-        q_values = ...
+        q_values = self.critic(obs[None].repeat((self.num_actor_samples, 1, 1)), action)
 
         # TODO(student): Compute the actor loss
-        loss = ...
+        loss = -torch.mean(q_values)
 
         return loss, torch.mean(self.entropy(action_distribution))
 
@@ -358,7 +355,7 @@ class SoftActorCritic(nn.Module):
             critic_infos.append(self.update_critic(observations, actions, rewards, next_observations, dones))
 
         # TODO(student): Update the actor
-        actor_info = self.update_actor(ptu.from_numpy(observations))
+        actor_info = self.update_actor(observations)
 
         # TODO(student): Perform either hard or soft target updates.
         # Relevant variables:
