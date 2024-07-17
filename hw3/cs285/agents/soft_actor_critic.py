@@ -182,11 +182,7 @@ class SoftActorCritic(nn.Module):
         Update the critic networks by computing target values and minimizing Bellman error.
         """
         (batch_size,) = reward.shape
-        obs = ptu.from_numpy(obs)
-        action = ptu.from_numpy(action)
-        next_obs = ptu.from_numpy(next_obs)
-        reward = ptu.from_numpy(reward)
-        done = ptu.from_numpy(done)
+
 
         # Compute target values
         # Important: we don't need gradients for target values!
@@ -353,7 +349,7 @@ class SoftActorCritic(nn.Module):
             critic_infos.append(self.update_critic(observations, actions, rewards, next_observations, dones))
 
         # TODO(student): Update the actor
-        actor_info = self.update_actor(ptu.from_numpy(observations))
+        actor_info = self.update_actor(observations)
 
         # TODO(student): Perform either hard or soft target updates.
         # Relevant variables:
