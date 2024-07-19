@@ -99,8 +99,6 @@ class MLPPolicyPG(MLPPolicy):
 
         # TODO: implement the policy gradient actor update.
         predicts = self.forward(obs)
-        print(actions.shape)
-        print(advantages.shape)
         loss = -(predicts.log_prob(actions) * advantages).mean()
 
         self.optimizer.zero_grad()

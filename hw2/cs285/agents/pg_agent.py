@@ -85,7 +85,8 @@ class PGAgent(nn.Module):
         # step 4: if needed, use all datapoints (s_t, a_t, q_t) to update the PG critic/baseline
         if self.critic is not None:
             # TODO: perform `self.baseline_gradient_steps` updates to the critic/baseline network
-            critic_info: dict = None
+            for i in range(self.baseline_gradient_steps):
+                critic_info: dict = self.critic.update(obs, q_values)
 
             info.update(critic_info)
 
@@ -124,7 +125,8 @@ class PGAgent(nn.Module):
             advantages = q_values.copy()
         else:
             # TODO: run the critic and use it as a baseline
-            values = self.critic(obs)
+            values = self.critic(ptu.from_numpy(obs))
+            values = ptu.to_numpy(values.squeeze(1))
             assert values.shape == q_values.shape
 
             if self.gae_lambda is None:
@@ -142,8 +144,9 @@ class PGAgent(nn.Module):
                     # TODO: recursively compute advantage estimates starting from timestep T.
                     # HINT: use terminals to handle edge cases. terminals[i] is 1 if the state is the last in its
                     # trajectory, and 0 otherwise.
-                    # advantages[i] = q_values[i] - values[i]
-                    print(1)
+                    delta = rewards[i] + (1 - terminals[i]) * self.gamma * values[i+1] - values[i]
+                    # delta = q_values[i] - values[i]
+                    advantages[i] = delta + self.gamma * self.gae_lambda * advantages[i+1]
 
                 # remove dummy advantage
                 advantages = advantages[:-1]
