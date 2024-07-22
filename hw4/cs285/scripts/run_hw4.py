@@ -168,8 +168,9 @@ def run_training_loop(
             # TODO(student): train the dynamics models
             # HINT: train each dynamics model in the ensemble with a *different* batch of transitions!
             # Use `replay_buffer.sample` with config["train_batch_size"].
-            sample = replay_buffer.sample(config["train_batch_size"])
-            step_losses = mb_agent.update(itr, sample["observations"], sample["actions"], sample["next_observations"])
+            for i in range(mb_agent.ensemble_size):
+                sample = replay_buffer.sample(config["train_batch_size"])
+                step_losses.append(mb_agent.update(i, sample["observations"], sample["actions"], sample["next_observations"]))
             all_losses.append(np.mean(step_losses))
 
         # on iteration 0, plot the full learning curve
