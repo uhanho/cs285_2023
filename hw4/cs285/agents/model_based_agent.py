@@ -89,7 +89,13 @@ class ModelBasedAgent(nn.Module):
         # directly
         # HINT 3: make sure to avoid any risk of dividing by zero when
         # normalizing vectors by adding a small number to the denominator!
-        loss = ...
+        norm_obs = (obs - self.obs_acs_mean[0]) / (self.obs_acs_std[0] + 1e-8)
+        norm_acs = (acs - self.obs_acs_mean[1]) / (self.obs_acs_std[1] + 1e-8)
+        obs_deltas = next_obs - obs
+        norm_deltas = (obs_deltas - self.obs_delta_mean) / (self.obs_delta_std + 1e-8)
+
+        predict = self.dynamics_models[i](torch.cat((norm_obs, norm_acs), dim=1))
+        loss = self.loss_fn(norm_deltas, predict)
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -111,10 +117,12 @@ class ModelBasedAgent(nn.Module):
         acs = ptu.from_numpy(acs)
         next_obs = ptu.from_numpy(next_obs)
         # TODO(student): update the statistics
-        self.obs_acs_mean = ...
-        self.obs_acs_std = ...
-        self.obs_delta_mean = ...
-        self.obs_delta_std = ...
+        self.obs_acs_mean = torch.tensor([torch.mean(obs), torch.mean(acs)])
+        self.obs_acs_std = torch.tensor([torch.std(obs), torch.std(acs)])
+
+        obs_deltas = next_obs - obs
+        self.obs_delta_mean = torch.mean(obs_deltas)
+        self.obs_delta_std = torch.std(obs_deltas)
 
     @torch.no_grad()
     def get_dynamics_predictions(
@@ -135,6 +143,7 @@ class ModelBasedAgent(nn.Module):
         # HINT: make sure to *unnormalize* the NN outputs (observation deltas)
         # Same hints as `update` above, avoid nasty divide-by-zero errors when
         # normalizing inputs!
+        self.dynamics_models[i](obs, acs)
         return ptu.to_numpy(pred_next_obs)
 
     def evaluate_action_sequences(self, obs: np.ndarray, action_sequences: np.ndarray):
@@ -216,6 +225,7 @@ class ModelBasedAgent(nn.Module):
         elif self.mpc_strategy == "cem":
             elite_mean, elite_std = None, None
             for i in range(self.cem_num_iters):
+                print("TODO")
                 # TODO(student): implement the CEM algorithm
                 # HINT: you need a special case for i == 0 to initialize
                 # the elite mean and std
