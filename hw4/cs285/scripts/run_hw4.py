@@ -46,7 +46,7 @@ def collect_mbpo_rollout(
         # Get the reward using `env.get_reward`.
         ac = sac_agent.get_action(ob)
         next_ob = mb_agent.get_dynamics_predictions(rollout_len, ob, ac)
-        rew = env.step(ac)
+        rew = env.get_reward(ob, ac)
 
         obs.append(ob)
         acs.append(ac)
