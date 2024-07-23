@@ -183,7 +183,6 @@ class SoftActorCritic(nn.Module):
         """
         (batch_size,) = reward.shape
 
-
         # Compute target values
         # Important: we don't need gradients for target values!
         with torch.no_grad():
@@ -262,7 +261,7 @@ class SoftActorCritic(nn.Module):
             ), action.shape
 
             # TODO(student): Compute Q-values for the current state-action pair
-            q_values = self.critic(obs.expand(self.num_actor_samples, -1, -1), action)
+            q_values = self.critic(obs.unsqueeze(0).expand(self.num_actor_samples, -1, -1), action)
             assert q_values.shape == (
                 self.num_critic_networks,
                 self.num_actor_samples,
@@ -288,10 +287,11 @@ class SoftActorCritic(nn.Module):
 
         # TODO(student): Sample actions
         # Note: Think about whether to use .rsample() or .sample() here...
-        action = action_distribution.rsample((self.num_actor_samples,))
+        # action = action_distribution.rsample((self.num_actor_samples,))
+        action = action_distribution.rsample()
 
         # TODO(student): Compute Q-values for the sampled state-action pair
-        q_values = self.critic(obs.expand(self.num_actor_samples, -1, -1), action)
+        q_values = self.critic(obs, action).mean(dim=0)
 
         # TODO(student): Compute the actor loss
         loss = -torch.mean(q_values)
@@ -342,6 +342,12 @@ class SoftActorCritic(nn.Module):
         """
         Update the actor and critic networks.
         """
+
+        observations = ptu.from_numpy(observations)
+        actions = ptu.from_numpy(actions)
+        rewards = ptu.from_numpy(rewards)
+        next_observations = ptu.from_numpy(next_observations)
+        dones = ptu.from_numpy(dones)
 
         critic_infos = []
         # TODO(student): Update the critic for num_critic_upates steps, and add the output stats to critic_infos
