@@ -60,6 +60,24 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
 
     for step in tqdm.trange(config["total_steps"], dynamic_ncols=True):
         # TODO(student): Borrow code from another online training script here. Only run the online training loop after `num_offline_steps` steps.
+        if step >= num_offline_steps:
+            epsilon = exploration_schedule.value(step)
+            if epsilon is None:
+                epsilon = 0.0
+            action = agent.get_action(observation, epsilon)
+            next_observation, reward, done, info = env.step(action)
+            next_observation = np.asarray(next_observation)
+            truncated = info.get("TimeLimit.truncated", False)
+
+            replay_buffer.insert(observation, action, reward, next_observation, (done and not truncated))
+
+            if done:
+                env.reset()
+
+                logger.log_scalar(info["episode"]["r"], "train_return", step)
+                logger.log_scalar(info["episode"]["l"], "train_ep_len", step)
+            else:
+                observation = next_observation
 
         # Main training loop
         batch = replay_buffer.sample(config["batch_size"])
